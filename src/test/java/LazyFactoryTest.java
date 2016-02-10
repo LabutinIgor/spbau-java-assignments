@@ -1,19 +1,38 @@
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.function.Supplier;
 
 public class LazyFactoryTest {
     @Test
-    public void testCreateLazyOneThread() {
-        Supplier<Integer> supplierReturn42 = new Supplier<Integer>() {
+    public void testCreateLazyOneThread_ReturnConstString() {
+        Supplier<String> supplier = new Supplier<String>() {
             @Override
-            public Integer get() {
-                return 42;
+            public String get() {
+                return "abacaba";
             }
         };
-        Lazy<Integer> lazyReturn42 = LazyFactory.createLazyOneThread(supplierReturn42);
-        assertEquals(lazyReturn42.get(), Integer.valueOf(42));
+        Lazy<String> lazy = LazyFactory.createLazyOneThread(supplier);
+        String result = lazy.get();
+        assertEquals(result, "abacaba");
+        assertTrue(result == lazy.get());
     }
+
+    @Test
+    public void testCreateLazyOneThread_returnNull() {
+        Supplier<String> supplier = new Supplier<String>() {
+            @Override
+            public String get() {
+                return null;
+            }
+        };
+        Lazy<String> lazy = LazyFactory.createLazyOneThread(supplier);
+        String result = lazy.get();
+        assertTrue(result == null);
+        assertTrue(lazy.get() == null);
+    }
+
+
 }
