@@ -1,5 +1,6 @@
 package ru.spbau.mit;
 
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 public class LazyFactory {
@@ -35,15 +36,11 @@ public class LazyFactory {
 
     public static <T> Lazy<T> createLazyLockFree(final Supplier<T> supplier) {
         return new Lazy<T>() {
-            private T result;
-            private boolean calculated = false;
+            private AtomicReference<T> result = new AtomicReference<>(null);
 
-            public synchronized T get() {
-                if (!calculated) {
-                    result = supplier.get();
-                    calculated = true;
-                }
-                return result;
+            public T get() {
+                result.compareAndSet(null, supplier.get());
+                return result.get();
             }
         };
     }
