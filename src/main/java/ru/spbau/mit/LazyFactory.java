@@ -37,9 +37,13 @@ public class LazyFactory {
     public static <T> Lazy<T> createLazyLockFree(final Supplier<T> supplier) {
         return new Lazy<T>() {
             private AtomicReference<T> result = new AtomicReference<>(null);
+            private volatile boolean calculated = false;
 
             public T get() {
-                result.compareAndSet(null, supplier.get());
+                if (!calculated) {
+                    result.compareAndSet(null, supplier.get());
+                    calculated = true;
+                }
                 return result.get();
             }
         };
