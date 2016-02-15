@@ -36,6 +36,7 @@ public class LazyFactoryTest {
     };
     private Supplier<Integer> supplierForMultiThread = new Supplier<Integer>() {
         private boolean wasCalled = false;
+
         @Override
         public synchronized Integer get() {
             if (wasCalled) {
@@ -47,6 +48,33 @@ public class LazyFactoryTest {
             return counter;
         }
     };
+
+    private List<Future<Integer>> createTasks(final Lazy<Integer> lazy) {
+        List<Future<Integer>> list = new ArrayList<>();
+        ExecutorService executorService = Executors.newFixedThreadPool(20);
+        for (int i = 0; i < 100; i++) {
+            list.add(executorService.submit(new Callable<Integer>() {
+                                                private Integer result;
+                                                private boolean calculated = false;
+
+                                                @Override
+                                                public Integer call() throws Exception {
+                                                    for (int i = 0; i < 20; i++) {
+                                                        Integer newResult = lazy.get();
+                                                        if (!calculated) {
+                                                            calculated = true;
+                                                            result = newResult;
+                                                        }
+                                                        assertTrue(result == newResult);
+                                                    }
+                                                    return result;
+                                                }
+                                            }
+            ));
+        }
+
+        return list;
+    }
 
     @Test
     public void testCreateLazyOneThread_simpleSupplier() {
@@ -88,7 +116,7 @@ public class LazyFactoryTest {
         counter = 0;
         Integer result = lazy.get();
         assertEquals(Integer.valueOf(1), result);
-        //assertTrue(result == lazy.get());
+        assertTrue(result == lazy.get());
     }
 
     @Test
@@ -102,28 +130,7 @@ public class LazyFactoryTest {
     @Test
     public void testCreateLazyMultiThread_concurrency() {
         final Lazy<Integer> lazy = LazyFactory.createLazyMultiThread(supplierForMultiThread);
-        List<Future<Integer>> list = new ArrayList<>();
-        ExecutorService executorService = Executors.newFixedThreadPool(20);
-        for (int i = 0; i < 100; i++) {
-            list.add(executorService.submit(new Callable<Integer>() {
-                                                private Integer result;
-                                                private boolean calculated = false;
-
-                                                @Override
-                                                public Integer call() throws Exception {
-                                                    for (int i = 0; i < 20; i++) {
-                                                        Integer newResult = lazy.get();
-                                                        if (!calculated) {
-                                                            calculated = true;
-                                                            result = newResult;
-                                                        }
-                                                        assertTrue(result == newResult);
-                                                    }
-                                                    return result;
-                                                }
-                                            }
-            ));
-        }
+        List<Future<Integer>> list = createTasks(lazy);
         try {
             Integer result = list.get(0).get();
             for (int i = 0; i < 100; i++) {
@@ -138,28 +145,7 @@ public class LazyFactoryTest {
     @Test
     public void testCreateLazyLockFree_concurrency() {
         final Lazy<Integer> lazy = LazyFactory.createLazyLockFree(concurrentSupplier);
-        List<Future<Integer>> list = new ArrayList<>();
-        ExecutorService executorService = Executors.newFixedThreadPool(20);
-        for (int i = 0; i < 100; i++) {
-            list.add(executorService.submit(new Callable<Integer>() {
-                                                private Integer result;
-                                                private boolean calculated = false;
-
-                                                @Override
-                                                public Integer call() throws Exception {
-                                                    for (int i = 0; i < 20; i++) {
-                                                        Integer newResult = lazy.get();
-                                                        if (!calculated) {
-                                                            calculated = true;
-                                                            result = newResult;
-                                                        }
-                                                        assertTrue(result == newResult);
-                                                    }
-                                                    return result;
-                                                }
-                                            }
-            ));
-        }
+        List<Future<Integer>> list = createTasks(lazy);
         try {
             Integer result = list.get(0).get();
             for (int i = 0; i < 100; i++) {
